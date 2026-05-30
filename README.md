@@ -1,5 +1,15 @@
 # Tiled Diffusion & VAE for ComfyUI
 
+> ## ⑂ About this fork
+>
+> This is a fork of [`shiimizu/ComfyUI-TiledDiffusion`](https://github.com/shiimizu/ComfyUI-TiledDiffusion) that fixes tiled diffusion on models with a **deep (non-8×) VAE** — specifically **Flux.2** and **ERNIE-Image**.
+>
+> Tile sizes are entered in pixels and converted to latent tiles by dividing by the VAE's spatial compression. Upstream hardcodes that factor to `8` (the SD/SDXL/Flux.1 ratio). Flux.2 and ERNIE-Image use a **128-channel, 16× VAE** (`flux2-vae`), so on those models an `8` made every tile **2× too large in each dimension (4× the area)** — far fewer/bigger tiles than requested, feeding the model ~2× its trained resolution per tile, with no error to hint at why.
+>
+> This fork infers the compression from the model's latent format instead of hardcoding it (`Flux2 → 16`; everything else keeps `8`, Cascade keeps `4`), so a tile size set in pixels means the same thing on every model. The change is a few lines in [`tiled_diffusion.py`](tiled_diffusion.py); everything else is identical to upstream and stays in sync. Non-Flux.2 models are completely unaffected.
+>
+> Works with base ERNIE-Image, ERNIE-Image-Turbo, and Flux.2 (they share one latent format / VAE). No new dependencies.
+
 Check out the [SD-WebUI extension](https://github.com/pkuliyi2015/multidiffusion-upscaler-for-automatic1111/) for more information.
 
 This extension enables **large image drawing & upscaling with limited VRAM** via the following techniques:
@@ -19,6 +29,8 @@ This extension enables **large image drawing & upscaling with limited VRAM** via
 - [x] Supported models
     - [x] SD1.x, SD2.x, SDXL, SD3
     - [x] FLUX
+    - [x] Flux.2 _(this fork — 16× VAE)_
+    - [x] ERNIE-Image / ERNIE-Image-Turbo _(this fork — 16× VAE)_
 - [x] ControlNet support
 - [ ] ~~StableSR support~~
 - [ ] ~~Tiled Noise Inversion~~
