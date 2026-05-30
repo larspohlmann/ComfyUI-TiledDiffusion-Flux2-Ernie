@@ -20,6 +20,21 @@ def ceildiv(big, small):
     # Correct ceiling division that avoids floating-point errors and importing math.ceil.
     return -(big // -small)
 
+# Tile sizes are entered in *pixels* and converted to latent tiles by dividing by
+# the VAE's spatial compression. ComfyUI doesn't hand the VAE to this node, so the
+# factor is inferred from the model. Upstream hardcodes 8 (the SD/SDXL/Flux ratio),
+# which is wrong for models on a deeper VAE: Flux.2 and ERNIE-Image use a 16x,
+# 128-channel VAE, so an 8 here makes every tile 2x too large in each dimension.
+_LATENT_FORMAT_COMPRESSION = {
+    "Flux2": 16,   # Flux.2 / ERNIE-Image (flux2-vae: downscale_ratio 16, 128 latent ch)
+}
+
+def _model_vae_compression(model: ModelPatcher) -> int:
+    if "CASCADE" in str(model.model.model_type):
+        return 4
+    latent_format = type(getattr(model.model, "latent_format", None)).__name__
+    return _LATENT_FORMAT_COMPRESSION.get(latent_format, 8)
+
 from enum import Enum
 class BlendMode(Enum):  # i.e. LayerType
     FOREGROUND = 'Foreground'
@@ -859,7 +874,7 @@ class TiledDiffusion():
         #     set_cache_callback = None # lambda x0, xt, prompts: self.noise_inverse_set_cache(p, x0, xt, prompts, steps, retouch)
         #     self.impl.init_noise_inverse(steps, retouch, get_cache_callback, set_cache_callback, renoise_strength, renoise_kernel_size)
 
-        compression = 4 if "CASCADE" in str(model.model.model_type) else 8
+        compression = _model_vae_compression(model)
         self.impl.tile_width = tile_width // compression
         self.impl.tile_height = tile_height // compression
         self.impl.tile_overlap = tile_overlap // compression
